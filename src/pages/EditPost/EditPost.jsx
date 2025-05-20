@@ -1,21 +1,22 @@
 import styles from "./EditPost.module.css";
 
-import { useState } from "react";
-import { useInsertDocument } from "../../hooks/useInsertDocument"
-import { useNavigate, useParams} from "react-router"
-import { useAuthValue} from "../../context/AuthContext"
+import { useState, useEffect } from "react"
+import { useNavigate, useParams } from "react-router"
+import {useAuthValue} from "../../context/AuthContext"
 import { useFetchDocument } from "../../hooks/useFetchDocument"
-import { useEffect } from "react";
+import { useUpdateDocument } from "../../hooks/useUpdateDocument"
 
 const EditPost = () => {
-  const {id} = useParams()
-  const {document: post} = useFetchDocument("posts", id)
+  const { id } = useParams();
+  const { document: post } = useFetchDocument("posts", id);
 
-  const [title, setTitle] = useState("")
-  const [image, setImage] = useState("")
-  const [body, setBody] = useState("")
-  const [tags, setTags] = useState([])
-  const [formError, setFormError] = useState("")
+  console.log(post);
+
+  const [title, setTitle] = useState("");
+  const [image, setImage] = useState("");
+  const [body, setBody] = useState("");
+  const [tags, setTags] = useState([]);
+  const [formError, setFormError] = useState("");
 
   // fill form data
   useEffect(() => {
@@ -28,49 +29,55 @@ const EditPost = () => {
 
       setTags(textTags);
     }
-  }, [post])
+  }, [post]);
 
   const { user } = useAuthValue();
 
   const navigate = useNavigate();
 
-  const { insertDocument, response } = useInsertDocument("posts");
+  const { updateDocument, response } = useUpdateDocument("posts");
 
   const handleSubmit = (e) => {
-  e.preventDefault();
-  setFormError("");
+    e.preventDefault();
+    setFormError("");
 
-  // validate image
-  try {
-    new URL(image);
-  } catch (error) {
-    return setFormError("A imagem precisa ser uma URL.");
-  }
+    // validate image
+    try {
+      new URL(image);
+    } catch (error) {
+      setFormError("A imagem precisa ser uma URL.");
+    }
 
-  // create tags array
-  const tagsArray = tags.split(",").map((tag) => tag.trim().toLowerCase());
+    // create tags array
+    const tagsArray = tags.split(",").map((tag) => tag.trim());
 
-  // check values
-  if (!title || !image || !tags || !body) {
-    return setFormError("Por favor, preencha todos os campos!");
-  }
+    console.log(tagsArray);
 
-  insertDocument({
-    title,
-    image,
-    body,
-    tags: tagsArray,
-    uid: user.uid,
-    createdBy: user.displayName,
-  });
+    console.log({
+      title,
+      image,
+      body,
+      tags: tagsArray,
+    });
 
-  // redirect to home page
-  navigate("/");
-};
+    const data = {
+      title,
+      image,
+      body,
+      tags: tagsArray,
+    };
+
+    console.log(post);
+
+    updateDocument(id, data);
+
+    // redirect to home page
+    navigate("/dashboard");
+  };
 
   return (
     <div className={styles.edit_post}>
-     {post && (
+      {post && (
         <>
           <h2>Editando post: {post.title}</h2>
           <p>Altere os dados do post como desejar</p>
@@ -137,7 +144,7 @@ const EditPost = () => {
         </>
       )}
     </div>
-  )
-}
+  );
+};
 
 export default EditPost
