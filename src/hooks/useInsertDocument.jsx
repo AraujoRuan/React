@@ -1,0 +1,72 @@
+import { useState, useEffect, useReducer } from "react";
+import { db } from "../firebase/Config";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+
+const initialState = {
+  loading: null,
+  error: null,
+  success: null
+};
+
+const insertReducer = (state, action) => {
+  switch (action.type) {
+    case "LOADING":
+      return { loading: true, error: null, success: null };
+    case "INSERTED_DOC":
+      return { loading: false, error: null, success: true };
+    case "ERROR":
+      return { loading: false, error: action.payload, success: false };
+    case "RESET":
+      return initialState;
+    default:
+      return state;
+  }
+};
+
+export const useInsertDocument = (docCollection) => {
+  const [response, dispatch] = useReducer(insertReducer, initialState);
+
+  // deal weith memory leak
+  const [cancelled, setCancelled] = useState(false);
+
+  const checkCancelBeforeDispatch = (action) => {
+    if (!cancelled) {
+      dispatch(action);
+    }
+  };
+
+  const insertDocument = async (document) => {
+    checkCancelBeforeDispatch({ type: "LOADING" });
+
+    try {
+      const newDocument = { ...document, createdAt: Timestamp.now() };
+      const insertedDocument = await addDoc(
+        collection(db, docCollection),
+        newDocument
+      );
+
+      checkCancelBeforeDispatch({
+        type: "INSERTED_DOC",
+        payload: insertedDocument,
+      });
+      
+      return insertedDocument;
+    } catch (error) {
+      checkCancelBeforeDispatch({ 
+        type: "ERROR", 
+        payload: error.message 
+      });
+      return null;
+    }
+  };
+
+  const resetResponse = () => {
+    dispatch({ type: "RESET" });
+  };
+
+  useEffect(() => {
+    return () => setCancelled(true);
+  }, []);
+
+  return { insertDocument, response, resetResponse };
+};

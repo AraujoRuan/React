@@ -1,0 +1,68 @@
+import { useState, useEffect, useReducer } from "react";
+import { db } from "../firebase/Config";
+import { doc, deleteDoc} from "firebase/firestore";
+
+const initialState = {
+  loading: null,
+  error: null,
+  success: null
+};
+
+const deleteReducer = (state, action) => {
+  switch (action.type) {
+    case "LOADING":
+      return { loading: true, error: null, success: null };
+    case "DELETED_DOC":
+      return { loading: false, error: null, success: true };
+    case "ERROR":
+      return { loading: false, error: action.payload, success: false };
+    case "RESET":
+      return initialState;
+    default:
+      return state;
+  }
+};
+
+export const useDeleteDocument = (docCollection) => {
+  const [response, dispatch] = useReducer(deleteReducer, initialState);
+
+  // deal weith memory leak
+  const [cancelled, setCancelled] = useState(false);
+
+  const checkCancelBeforeDispatch = (action) => {
+    if (!cancelled) {
+      dispatch(action);
+    }
+  };
+
+  const deleteDocument = async (id) => {
+    checkCancelBeforeDispatch({ type: "LOADING" });
+
+    try {
+      const deleteDocument = await deleteDoc(doc(db, docCollection, id))
+      
+      checkCancelBeforeDispatch({
+        type: "DELETED_DOC",
+        payload: deleteDocument,
+      });
+      
+      return insertedDocument;
+    } catch (error) {
+      checkCancelBeforeDispatch({ 
+        type: "ERROR", 
+        payload: error.message 
+      });
+      return null;
+    }
+  };
+
+  const resetResponse = () => {
+    dispatch({ type: "RESET" });
+  };
+
+  useEffect(() => {
+    return () => setCancelled(true);
+  }, []);
+
+  return { deleteDocument, response, resetResponse };
+};
